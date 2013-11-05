@@ -16,5 +16,6 @@ cabal-version:       >=1.8
 
 executable hfortran
   -- main-is:             
+   hs-source-dirs:      src 
   -- other-modules:       
   build-depends:       base ==4.6.*

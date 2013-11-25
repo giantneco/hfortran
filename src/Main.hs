@@ -34,3 +34,5 @@ program = do
   spaces
   string "program"
   return Program
+
+main = putStrLn "not yet"

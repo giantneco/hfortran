@@ -23,16 +23,21 @@ spaces = skipMany1 space
 
 programStatement :: Parser String
 programStatement = do
+  string "program" >> spaces >>
+  spaces
+  return "hoge"
+
+endProgramStatement :: Parser String
+endProgramStatement = do
   string "program"
   spaces
   return "hoge"
 
+
 program :: Parser FortranTopLevel
 program = do
   name <- programStatement
-  string "end"
-  spaces
-  string "program"
+  string "end" >> spaces >> string "program"
   return Program
 
 main = putStrLn "not yet"

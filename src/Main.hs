@@ -1,10 +1,11 @@
 module Main where
 
-import Text.Parsec hiding (spaces)
+import Text.Parsec
 import Text.Parsec.String
+import Control.Applicative hiding ((<|>), many)
 
-data FortranTopLevel 
-  = Program
+data FortranTopLevel
+  = Program (Maybe String)
   -- | Subroutine
   -- | Function
   -- | Module     -- TODO
@@ -18,26 +19,39 @@ fortranTopLevel = undefined
 
 -- program :: Parser FortranTopLevel
 
-spaces :: Parser ()
-spaces = skipMany1 space
+spaces1 :: Parser ()
+spaces1 = skipMany1 space
 
-programStatement :: Parser String
+identifier :: Parser String
+identifier = do
+  first <- letter
+  rest <- many (letter <|> digit)
+  return (first : rest)
+
+programStatement :: Parser (Maybe String)
 programStatement = do
-  string "program" >> spaces >>
   spaces
-  return "hoge"
-
-endProgramStatement :: Parser String
-endProgramStatement = do
   string "program"
   spaces
-  return "hoge"
+  programName <- optionMaybe identifier
+  return $ programName
 
+endProgramStatement :: Parser (Maybe String)
+endProgramStatement = do
+  spaces
+  string "end"
+  spaces
+  string "program"
+  spaces
+  programName <- optionMaybe identifier
+  return $ programName
 
 program :: Parser FortranTopLevel
 program = do
-  name <- programStatement
-  string "end" >> spaces >> string "program"
-  return Program
+  name1 <- programStatement
+  name2 <- endProgramStatement
+  if Just(False) == ((==) <$> name1 <*> name2)
+    then error "not match"
+    else return $ Program name1
 
 main = putStrLn "not yet"

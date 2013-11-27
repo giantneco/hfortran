@@ -15,7 +15,7 @@ data FortranExecute
      deriving Show
 
 data FortranTopLevel
-  = Program String
+  = Program String [FortranDeclaration] [FortranExecute]
   -- | Subroutine
   -- | Function
   -- | Module     -- TODO
@@ -52,6 +52,17 @@ identifier = do
   rest <- many (letter <|> digit)
   return (first : rest)
 
+continueStatement :: Parser FortranExecute
+continueStatement = do
+  spaces
+  string "continue"
+  spaces
+  eol
+  return $ Continue
+
+executeStatement :: Parser FortranExecute
+executeStatement = continueStatement
+
 programStatement :: Parser String
 programStatement = do
   spaces
@@ -76,8 +87,9 @@ endProgramStatement programName = do
 program :: Parser FortranTopLevel
 program = do
   programName <- programStatement
+  cs <- many continueStatement
   endProgramStatement programName
   eof
-  return $ Program programName
+  return $ Program programName [] cs
 
 main = putStrLn "not yet"

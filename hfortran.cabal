@@ -14,19 +14,29 @@ category:            Language
 build-type:          Simple
 cabal-version:       >=1.8
 
+library		       
+    hs-source-dirs:      src
+    exposed-modules:     HFortran
+                       , HFortran.Parser
+                       , HFortran.AST
+    build-depends:       base < 5
+                       , parsec  
+
 executable hfortran
-   main-is:             Main.hs
-   hs-source-dirs:      src 
-  -- other-modules:       
-  build-depends:       base < 5
-                     , parsec  
+    main-is:             Main.hs
+    hs-source-dirs:      src 
+    -- other-modules:       
+    build-depends:       base < 5
+                       , parsec  
 
 Test-Suite Test
     type:             exitcode-stdio-1.0
-    main-is:          Test.hs
+    main-is:          UnitTest.hs
     hs-source-dirs:   test
     default-language: Haskell2010
     build-depends: base < 5
+                 , hfortran
+                 , parsec  
                  , HUnit
                  , mtl
                  , test-framework

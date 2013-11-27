@@ -1,11 +1,21 @@
 module Main where
 
-import Text.Parsec
+import Text.Parsec hiding (space, spaces)
 import Text.Parsec.String
 import Control.Applicative hiding ((<|>), many)
 
+data FortranDeclaration
+     = TypeDeclaration
+     deriving Show
+
+data FortranExecute
+     = Assignment
+     | Call
+     | Continue
+     deriving Show
+
 data FortranTopLevel
-  = Program (Maybe String)
+  = Program String
   -- | Subroutine
   -- | Function
   -- | Module     -- TODO
@@ -19,8 +29,22 @@ fortranTopLevel = undefined
 
 -- program :: Parser FortranTopLevel
 
+space :: Parser ()
+space = do
+  oneOf " \t"
+  return ()
+
+spaces :: Parser ()
+spaces = do
+  skipMany space
+
 spaces1 :: Parser ()
 spaces1 = skipMany1 space
+
+eol :: Parser ()
+eol = do
+  char '\n'
+  return ()
 
 identifier :: Parser String
 identifier = do
@@ -28,30 +52,32 @@ identifier = do
   rest <- many (letter <|> digit)
   return (first : rest)
 
-programStatement :: Parser (Maybe String)
+programStatement :: Parser String
 programStatement = do
   spaces
   string "program"
   spaces
-  programName <- optionMaybe identifier
+  programName <- identifier
+  spaces
+  eol
   return $ programName
 
-endProgramStatement :: Parser (Maybe String)
-endProgramStatement = do
+endProgramStatement :: String -> Parser ()
+endProgramStatement programName = do
   spaces
   string "end"
   spaces
   string "program"
   spaces
-  programName <- optionMaybe identifier
-  return $ programName
+  notFollowedBy alphaNum <|> do {string programName; return ()} <?> "end program " ++ programName
+  eol
+  return ()
 
 program :: Parser FortranTopLevel
 program = do
-  name1 <- programStatement
-  name2 <- endProgramStatement
-  if Just(False) == ((==) <$> name1 <*> name2)
-    then error "not match"
-    else return $ Program name1
+  programName <- programStatement
+  endProgramStatement programName
+  eof
+  return $ Program programName
 
 main = putStrLn "not yet"

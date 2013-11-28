@@ -27,15 +27,31 @@ spaces1 :: Parser ()
 spaces1 = skipMany1 space
 
 eol :: Parser ()
-eol = do
-  char '\n'
-  return ()
+eol = do {char '\n'; return ()} <|> eof
 
 identifier :: Parser String
 identifier = do
   first <- letter
   rest <- many (letter <|> digit)
   return (first : rest)
+
+fortranBaseType :: Parser FortranBaseType
+fortranBaseType = 
+  do { string "integer"; return FInteger }
+
+typeDeclarationStatement :: Parser FortranDeclaration
+typeDeclarationStatement = do
+  spaces
+  baseType <- fortranBaseType
+  spaces1
+  id <- identifier
+  spaces
+  eol
+  return $ TypeDeclaration baseType id
+
+declarationStatement :: Parser FortranDeclaration
+declarationStatement =
+  typeDeclarationStatement
 
 continueStatement :: Parser FortranExecute
 continueStatement = do
@@ -46,7 +62,8 @@ continueStatement = do
   return $ Continue
 
 executeStatement :: Parser FortranExecute
-executeStatement = continueStatement
+executeStatement =
+  continueStatement
 
 programStatement :: Parser String
 programStatement = do
@@ -66,13 +83,14 @@ endProgramStatement programName = do
   string "program"
   spaces
   notFollowedBy alphaNum <|> do {string programName; return ()} <?> "end program " ++ programName
+  spaces
   eol
   return ()
 
 program :: Parser FortranTopLevel
 program = do
   programName <- programStatement
+  decls <- many declarationStatement
   cs <- many continueStatement
   endProgramStatement programName
-  eof
-  return $ Program programName [] cs
+  return $ Program programName decls cs

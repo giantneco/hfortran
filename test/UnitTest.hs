@@ -21,9 +21,25 @@ parseHelper input =
     Left _ -> error "parse Error!"
 
 tests = test [ 
-  parseHelper "program main\nend program main\n"
+  parseHelper
+  "program main\nend program main\n"
   ~?=
   Program "main" [] []
+  ,
+  parseHelper
+  "program main\n end program main \n"
+  ~?=
+  Program "main" [] []
+  ,
+  parseHelper
+  "program main\n integer a \nend program main\n"
+  ~?=
+  Program "main" [TypeDeclaration FInteger "a"] []
+  ,
+  parseHelper
+  "program main\n integer a \nend program main\n"
+  ~?=
+  Program "main" [TypeDeclaration FInteger "a"] []
   ]
 -- runState (return 12 >>= put) 11  ~?= runState (put 12) 11
 --              , runState (get >>= return) 12 ~?= runState get 12

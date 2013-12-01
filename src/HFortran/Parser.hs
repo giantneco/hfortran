@@ -50,8 +50,7 @@ typeDeclarationStatement = do
   return $ TypeDeclaration baseType id
 
 declarationStatement :: Parser FortranDeclaration
-declarationStatement =
-  typeDeclarationStatement
+declarationStatement = do try (typeDeclarationStatement)
 
 continueStatement :: Parser FortranExecute
 continueStatement = do
@@ -62,8 +61,7 @@ continueStatement = do
   return $ Continue
 
 executeStatement :: Parser FortranExecute
-executeStatement =
-  continueStatement
+executeStatement = do try (continueStatement)
 
 programStatement :: Parser String
 programStatement = do
@@ -91,6 +89,13 @@ program :: Parser FortranTopLevel
 program = do
   programName <- programStatement
   decls <- many declarationStatement
-  cs <- many continueStatement
+  cs <- many executeStatement
   endProgramStatement programName
   return $ Program programName decls cs
+
+testParser :: Parser [String]
+testParser = do
+  a <- many $ try ( do {spaces; ret <- string "a"; return ret} )
+  b <- many $ do {spaces; ret <- string "b"; return ret}
+  eof
+  return $ a ++ b

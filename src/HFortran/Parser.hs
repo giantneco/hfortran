@@ -35,19 +35,31 @@ identifier = do
   rest <- many (letter <|> digit)
   return (first : rest)
 
-fortranBaseType :: Parser FortranBaseType
-fortranBaseType = 
-  do { string "integer"; return FInteger }
+-- | R502 type-spec
+typeSpec :: Parser FortranBaseType
+typeSpec = (do { string "integer"; return FInteger })
+       <|> (do { string "real"; return FReal })
+       <|> (do { string "double"; spaces; string "precision"; return FDoublePrecision})
+       <|> (do { string "complex"; return FComplex })
+       <|> (do { string "character"; return FCharacter})
+       <|> (do { string "logical"; return FLogical })
+       <|> (do { string "type"; spaces ; char '(' ; spaces ; identifier; spaces; char ')'; return FType })
+
+commaSep :: Parser ()
+commaSep = try $ do
+           spaces
+           char ','
+           spaces
 
 typeDeclarationStatement :: Parser FortranDeclaration
 typeDeclarationStatement = do
   spaces
-  baseType <- fortranBaseType
-  spaces1
-  id <- identifier
+  baseType <- typeSpec
+  spaces
+  ids <- sepBy identifier commaSep
   spaces
   eol
-  return $ TypeDeclaration baseType id
+  return $ TypeDeclaration baseType ids
 
 declarationStatement :: Parser FortranDeclaration
 declarationStatement = do try (typeDeclarationStatement)

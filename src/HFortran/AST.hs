@@ -6,11 +6,17 @@ import Text.Parsec.String
 -- typedef Identifier = String
 
 data FortranBaseType =
-  FInteger
+    FInteger
+  | FReal
+  | FDoublePrecision
+  | FComplex
+  | FCharacter
+  | FLogical
+  | FType
   deriving (Show, Eq)
 
 data FortranDeclaration
-     = TypeDeclaration FortranBaseType String
+     = TypeDeclaration FortranBaseType [String]
      deriving (Show, Eq)
 
 data FortranExecute

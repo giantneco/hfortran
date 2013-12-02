@@ -5,6 +5,10 @@ import Text.Parsec.String
 
 -- typedef Identifier = String
 
+data FortranConstant =
+  CharLiteralConstant String
+  deriving (Show, Eq)
+
 data FortranBaseType =
     FInteger
   | FReal
@@ -15,15 +19,20 @@ data FortranBaseType =
   | FType
   deriving (Show, Eq)
 
-data FortranDeclaration
-     = TypeDeclaration FortranBaseType [String]
-     deriving (Show, Eq)
+data FortranDeclaration =
+  TypeDeclaration FortranBaseType [String]
+  deriving (Show, Eq)
 
-data FortranExecute
-     = Assignment
-     | Call
-     | Continue
-     deriving (Show, Eq)
+data FortranFormat =
+  FormatAsterisc
+  deriving (Show, Eq)
+
+data FortranExecute =
+  Assignment
+  | Print FortranFormat [FortranConstant]  -- R911
+  | Call
+  | Continue
+  deriving (Show, Eq)
 
 -- data FortranStatement
 --   = ProgramStatement String

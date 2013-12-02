@@ -35,6 +35,18 @@ identifier = do
   rest <- many (letter <|> digit)
   return (first : rest)
 
+-- | comma separater
+commaSep :: Parser ()
+commaSep = try $ do
+           spaces
+           char ','
+           spaces
+
+-- | R420 char-literal-constant
+charLiteralConstant :: Parser FortranConstant
+charLiteralConstant = (do { char '"'; str <- many (noneOf "\""); char '"'; return $ CharLiteralConstant str })
+                  <|> (do { char '\''; str <- many (noneOf "\'"); char '\''; return $ CharLiteralConstant str })
+
 -- | R502 type-spec
 typeSpec :: Parser FortranBaseType
 typeSpec = (do { string "integer"; return FInteger })
@@ -44,12 +56,6 @@ typeSpec = (do { string "integer"; return FInteger })
        <|> (do { string "character"; return FCharacter})
        <|> (do { string "logical"; return FLogical })
        <|> (do { string "type"; spaces ; char '(' ; spaces ; identifier; spaces; char ')'; return FType })
-
-commaSep :: Parser ()
-commaSep = try $ do
-           spaces
-           char ','
-           spaces
 
 typeDeclarationStatement :: Parser FortranDeclaration
 typeDeclarationStatement = do
@@ -64,6 +70,39 @@ typeDeclarationStatement = do
 declarationStatement :: Parser FortranDeclaration
 declarationStatement = do try (typeDeclarationStatement)
 
+-- | R911 print-stmt (WIP)
+printStatement :: Parser FortranExecute
+printStatement = do
+  spaces
+  string "print"
+  spaces
+  fmt <- format
+  spaces
+  outputItemList <- many $ try $ do { commaSep ; item <- charLiteralConstant; return item }
+  eol
+  return $ Print fmt outputItemList
+
+-- | R913 format
+format :: Parser FortranFormat
+format = do
+  char '*'
+  return FormatAsterisc
+
+-- -- | R910 write-stmt (WIP)
+-- writeStatement :: Parser FortranExecute
+-- writeStatement = do
+--   spaces
+--   string "write"
+--   spaces
+--   char '('
+--   spaces
+--   ioControlSpecList
+--   spaces
+--   char ')'
+  
+-- -- | 912 io-control-spec-list
+-- ioControlSpecList :: Parser 
+
 continueStatement :: Parser FortranExecute
 continueStatement = do
   spaces
@@ -73,7 +112,8 @@ continueStatement = do
   return $ Continue
 
 executeStatement :: Parser FortranExecute
-executeStatement = do try (continueStatement)
+executeStatement = try continueStatement
+               <|> try printStatement
 
 programStatement :: Parser String
 programStatement = do
@@ -101,9 +141,9 @@ program :: Parser FortranTopLevel
 program = do
   programName <- programStatement
   decls <- many declarationStatement
-  cs <- many executeStatement
+  exes <- many executeStatement
   endProgramStatement programName
-  return $ Program programName decls cs
+  return $ Program programName decls exes
 
 testParser :: Parser [String]
 testParser = do

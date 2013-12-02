@@ -132,7 +132,7 @@ endProgramStatement programName = do
   spaces
   string "program"
   spaces
-  notFollowedBy alphaNum <|> do {string programName; return ()} <?> "end program " ++ programName
+  notFollowedBy alphaNum <|> do {string programName; return ()} <?> "require end program " ++ programName
   spaces
   eol
   return ()

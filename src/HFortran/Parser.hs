@@ -79,14 +79,15 @@ printStatement = do
   fmt <- format
   spaces
   outputItemList <- many $ try $ do { commaSep ; item <- charLiteralConstant; return item }
+  spaces
   eol
   return $ Print fmt outputItemList
 
 -- | R913 format
 format :: Parser FortranFormat
-format = do
-  char '*'
-  return FormatAsterisc
+format = (do char '*'; return FormatAsterisc)
+     -- <|> (do ?; return FormatDefaultCharExpr) -- TODO
+     -- <|> (do ?; return Lable)                 -- TODO
 
 -- -- | R910 write-stmt (WIP)
 -- writeStatement :: Parser FortranExecute

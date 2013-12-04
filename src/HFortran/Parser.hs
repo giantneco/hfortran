@@ -138,10 +138,3 @@ program = do
   exes <- many executeStatement
   endProgramStatement programName
   return $ Program programName decls exes
-
-testParser :: Parser [String]
-testParser = do
-  a <- many $ try ( do {spaces; ret <- string "a"; return ret} )
-  b <- many $ do {spaces; ret <- string "b"; return ret}
-  eof
-  return $ a ++ b

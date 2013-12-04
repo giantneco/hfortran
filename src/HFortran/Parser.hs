@@ -35,6 +35,14 @@ identifier = do
   rest <- many (letter <|> digit)
   return (first : rest)
 
+line :: Parser a -> Parser a
+line psr = do
+  spaces
+  ret <- psr
+  spaces
+  eol
+  return ret
+
 -- | comma separater
 commaSep :: Parser ()
 commaSep = try $ do
@@ -58,13 +66,10 @@ typeSpec = (do { string "integer"; return FInteger })
        <|> (do { string "type"; spaces ; char '(' ; spaces ; identifier; spaces; char ')'; return FType })
 
 typeDeclarationStatement :: Parser FortranDeclaration
-typeDeclarationStatement = do
-  spaces
+typeDeclarationStatement = line $ do
   baseType <- typeSpec
   spaces
   ids <- sepBy identifier commaSep
-  spaces
-  eol
   return $ TypeDeclaration baseType ids
 
 declarationStatement :: Parser FortranDeclaration
@@ -72,15 +77,12 @@ declarationStatement = do try (typeDeclarationStatement)
 
 -- | R911 print-stmt (WIP)
 printStatement :: Parser FortranExecute
-printStatement = do
-  spaces
+printStatement = line $  do
   string "print"
   spaces
   fmt <- format
   spaces
   outputItemList <- many $ try $ do { commaSep ; item <- charLiteralConstant; return item }
-  spaces
-  eol
   return $ Print fmt outputItemList
 
 -- | R913 format
@@ -105,11 +107,8 @@ format = (do char '*'; return FormatAsterisc)
 -- ioControlSpecList :: Parser 
 
 continueStatement :: Parser FortranExecute
-continueStatement = do
-  spaces
+continueStatement = line $ do
   string "continue"
-  spaces
-  eol
   return $ Continue
 
 executeStatement :: Parser FortranExecute
@@ -117,25 +116,19 @@ executeStatement = try continueStatement
                <|> try printStatement
 
 programStatement :: Parser String
-programStatement = do
-  spaces
+programStatement = line $ do
   string "program"
   spaces
   programName <- identifier
-  spaces
-  eol
   return $ programName
 
 endProgramStatement :: String -> Parser ()
-endProgramStatement programName = do
-  spaces
+endProgramStatement programName = line $ do
   string "end"
   spaces
   string "program"
   spaces
   notFollowedBy alphaNum <|> do {string programName; return ()} <?> "require end program " ++ programName
-  spaces
-  eol
   return ()
 
 program :: Parser FortranTopLevel

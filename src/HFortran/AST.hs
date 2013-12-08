@@ -24,6 +24,25 @@ data FortranBaseType =
   | FType
   deriving (Show, Eq)
 
+data UnaryOp =
+    Not
+  deriving (Show, Eq)
+
+data BinaryOp =
+    And
+  | Or
+  | Equiv
+  | NEquiv
+  | DefinedBin String
+  deriving (Show, Eq)
+
+data Expression =
+    Constant FortranConstant
+  | Variable String
+  | UnaryOperand UnaryOp Expression
+  | BinaryOperand BinaryOp Expression Expression
+  deriving (Show, Eq)
+
 data FortranDeclaration =
   TypeDeclaration FortranBaseType [String]
   deriving (Show, Eq)
@@ -33,7 +52,7 @@ data FortranFormat =
   deriving (Show, Eq)
 
 data FortranExecute =
-  Assignment
+  Assignment Expression Expression
   | Print FortranFormat [FortranConstant]  -- R911
   | Call
   | Continue

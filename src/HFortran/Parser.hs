@@ -59,7 +59,7 @@ commaSep = try $ do
            char ','
            spaces
 
--- R401 signed-digit-string
+-- | R401 signed-digit-string
 signedDigitString :: Parser String
 signedDigitString = do
   sign <- optionMaybe sign
@@ -68,11 +68,11 @@ signedDigitString = do
     Nothing -> return digits
     Just x -> return $ x : digits
 
--- R402 digit-string
+-- | R402 digit-string
 digitString :: Parser String
 digitString = many1 digit
 
--- R403 signed-int-literal-constant
+-- | R403 signed-int-literal-constant
 signedIntLiteralConstant :: Parser FortranConstant
 signedIntLiteralConstant = do
   sign <- optionMaybe sign
@@ -84,14 +84,15 @@ signedIntLiteralConstant = do
       Nothing -> return $ IntLiteralConstant value kind
       Just x -> return $ IntLiteralConstant (value * (if x == '+' then 1 else -1)) kind
 
--- R404 int-literal-constant
+-- | R404 int-literal-constant
 intLiteralConstant :: Parser FortranConstant
 intLiteralConstant = do
   digit <- digitString
   kind <- optionMaybe $ do { char '_'; kindParam }
   return $ IntLiteralConstant (read digit) kind
 
--- R405 kind-param
+-- | R405 kind-param
+-- TODO accept named constant
 kindParam :: Parser FortranConstant
 kindParam = do
   digit <- digitString
@@ -126,26 +127,91 @@ typeDeclarationStatement = line $ do
   ids <- sepBy identifier commaSep
   return $ TypeDeclaration baseType ids
 
+-- R601 variable
+variable :: Parser Expression
+variable = (do { name <- name; return $ Variable name }) -- scalar-variable-name or array-variable-name
+
 -- | R701 Primary
-primary :: Parser FortranConstant
-primary = constant
+primary :: Parser Expression
+primary = try (do { constant <- constant; return $ Constant constant})
 --       <|> constantSubobject
---       <|> variable
+      <|> variable
 --       <|> arrayConstructor
 --       <|> structConstructor
 --       <|> functionReference
 --       <|> (do {char '('; spaces; ret <- expr; spaces; char ')'; return ret})
 
--- | R702 constant subobject
-
--- 
+-- R702 constant subobject
 
 declarationStatement :: Parser FortranDeclaration
 declarationStatement = do try (typeDeclarationStatement)
 
+-- TODO
+level1Expr :: Parser Expression
+level1Expr = primary
+
+-- TODO
+level2Expr :: Parser Expression
+level2Expr = level1Expr
+
+-- TODO
+level3Expr :: Parser Expression
+level3Expr = level2Expr
+
+-- TODO
+level4Expr :: Parser Expression
+level4Expr = level3Expr
+
+-- | R715 and-operand
+andOperand :: Parser Expression
+andOperand = try (do { op <- notOp; spaces; arg <- level4Expr; return $ UnaryOperand Not arg}) <|> level4Expr
+
+-- | R716 or-operand
+orOperand :: Parser Expression
+orOperand = try (do { arg1 <- orOperand; spaces; orOp; spaces; arg2 <- andOperand; return $ BinaryOperand And arg1 arg2}) <|> andOperand
+
+-- | R717 equiv-operand
+equivOperand :: Parser Expression
+equivOperand = try (do { arg1 <- equivOperand; spaces; orOp; spaces; arg2 <- orOperand; return $ BinaryOperand Or arg1 arg2}) <|> orOperand
+
+-- | R718 level5-expr
+level5Expr :: Parser Expression
+level5Expr = try (do { arg1 <- level5Expr; spaces; op <- equivOp; spaces; arg2 <- equivOperand; return $ BinaryOperand op arg1 arg2}) <|> equivOperand
+
+-- | R719
+notOp :: Parser ()
+notOp = do { string ".not."; return ()}
+
+-- | R720
+andOp :: Parser ()
+andOp = do { string ".and."; return ()}
+
+-- | R721
+orOp :: Parser ()
+orOp = do { string ".or."; return ()}
+
+-- | R722
+equivOp :: Parser BinaryOp
+equivOp = do { string ".eqv."; return Equiv} <|> do { string ".neqv."; return NEquiv }
+
+-- | R723 expr
+expression :: Parser Expression
+expression = level5Expr
+         -- <|> (do {a <- expression; spaces; def <- definedBinaryOperation; spaces; b <- level5Expr; ?} -- TODO
+
+-- | R735 assignment-stmt
+assignmentStatement :: Parser FortranExecute
+assignmentStatement = line $ do
+  lhs <- variable
+  spaces
+  char '='
+  spaces
+  expr <- expression
+  return $ Assignment lhs expr
+
 -- | R911 print-stmt (WIP)
 printStatement :: Parser FortranExecute
-printStatement = line $  do
+printStatement = line $ do
   string "print"
   spaces
   fmt <- format

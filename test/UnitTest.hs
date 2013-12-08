@@ -40,4 +40,9 @@ tests = test [
   "program main\n integer a \nend program main\n"
   ~?=
   Program "main" [TypeDeclaration FInteger "a"] []
+  ,
+  parseHelper
+  "program main\n integer a \nend program main\n"
+  ~?=
+  Program "main" [TypeDeclaration FInteger "a"] []
   ]

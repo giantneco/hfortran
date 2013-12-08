@@ -5,8 +5,13 @@ import Text.Parsec.String
 
 -- typedef Identifier = String
 
+-- TODO
+-- data Kind = ?
+
 data FortranConstant =
-  CharLiteralConstant String
+    CharLiteralConstant String
+  | IntLiteralConstant Int (Maybe(FortranConstant))
+  -- | IntLiteralConstantKinded Int (Maybe(FortranConstant))
   deriving (Show, Eq)
 
 data FortranBaseType =

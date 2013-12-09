@@ -247,6 +247,7 @@ continueStatement = line $ do
 
 executeStatement :: Parser FortranExecute
 executeStatement = try continueStatement
+               <|> try assignmentStatement
                <|> try printStatement
 
 programStatement :: Parser String

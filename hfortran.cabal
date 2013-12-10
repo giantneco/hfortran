@@ -16,6 +16,7 @@ cabal-version:       >=1.8
 
 library		       
     hs-source-dirs:      src
+    ghc-options:         -Wall -O2 -auto-all
     exposed-modules:     HFortran
                        , HFortran.Parser
                        , HFortran.AST
@@ -24,6 +25,7 @@ library
 
 executable hfortran
     main-is:             Main.hs
+    ghc-options:         -Wall -O2 -auto-all -prof
     hs-source-dirs:      src 
     -- other-modules:       
     build-depends:       base < 5

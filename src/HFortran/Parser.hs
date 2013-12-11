@@ -168,31 +168,32 @@ andOperand = try (do { op <- notOp; spaces; arg <- level4Expr; return $ UnaryOpe
 
 -- | R716 or-operand
 orOperand :: Parser Expression
-orOperand = try (do { arg1 <- orOperand; spaces; orOp; spaces; arg2 <- andOperand; return $ BinaryOperand And arg1 arg2}) <|> andOperand
+orOperand = andOperand `chainl1` andOp
 
 -- | R717 equiv-operand
 equivOperand :: Parser Expression
-equivOperand = try (do { arg1 <- equivOperand; spaces; orOp; spaces; arg2 <- orOperand; return $ BinaryOperand Or arg1 arg2}) <|> orOperand
+equivOperand = orOperand `chainl1` orOp
 
 -- | R718 level5-expr
 level5Expr :: Parser Expression
-level5Expr = try (do { arg1 <- level5Expr; spaces; op <- equivOp; spaces; arg2 <- equivOperand; return $ BinaryOperand op arg1 arg2}) <|> equivOperand
+level5Expr = equivOperand `chainl1` equivOp
 
 -- | R719
-notOp :: Parser ()
-notOp = do { string ".not."; return ()}
+notOp :: Parser (Expression -> Expression)
+notOp = try $ do { spaces; string ".not."; spaces; return $ UnaryOperand Not }
 
 -- | R720
-andOp :: Parser ()
-andOp = do { string ".and."; return ()}
+andOp :: Parser (Expression -> Expression -> Expression)
+andOp = try $ do { spaces; string ".and."; spaces; return $ BinaryOperand And}
 
 -- | R721
-orOp :: Parser ()
-orOp = do { string ".or."; return ()}
+orOp :: Parser (Expression -> Expression -> Expression)
+orOp = try $ do { spaces; string ".or."; spaces; return $ BinaryOperand Or}
 
 -- | R722
-equivOp :: Parser BinaryOp
-equivOp = do { string ".eqv."; return Equiv} <|> do { string ".neqv."; return NEquiv }
+equivOp :: Parser (Expression -> Expression -> Expression)
+equivOp = (try $ do { spaces; string ".neqv.";  spaces; return $ BinaryOperand NEquiv})
+      <|> (try $ do { spaces; string ".eqv.";  spaces; return $ BinaryOperand Equiv})
 
 -- | R723 expr
 expression :: Parser Expression

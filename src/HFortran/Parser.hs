@@ -160,7 +160,27 @@ level3Expr = level2Expr
 
 -- TODO
 level4Expr :: Parser Expression
-level4Expr = level3Expr
+level4Expr = level3Expr `chainl1` relOp -- TODO fix -> "[level3Expr relOp] level3Expr" is correct
+
+relOp :: Parser (Expression -> Expression -> Expression)
+relOp = do
+  spaces
+  op <- choice [
+    do { string ".eq."; return $ BinaryOperand Equal },
+    do { string "=="; return $ BinaryOperand Equal },
+    do { string ".neq."; return $ BinaryOperand NEqual },
+    do { string "/="; return $ BinaryOperand NEqual },
+    do { string ".lt."; return $ BinaryOperand LessT },
+    do { string "<"; return $ BinaryOperand LessT },
+    do { string ".le."; return $ BinaryOperand LessE },
+    do { string "<="; return $ BinaryOperand LessE },
+    do { string ".gt."; return $ BinaryOperand GreT },
+    do { string ">"; return $ BinaryOperand GreT },
+    do { string ".ge."; return $ BinaryOperand GreE },
+    do { string ">="; return $ BinaryOperand GreE }
+               ]
+  spaces
+  return op
 
 -- | R715 and-operand
 andOperand :: Parser Expression

@@ -34,6 +34,12 @@ data BinaryOp =
   | Equiv
   | NEquiv
   | DefinedBin String
+  | Equal
+  | NEqual
+  | LessT
+  | LessE
+  | GreT    
+  | GreE
   deriving (Show, Eq)
 
 data Expression =

@@ -131,6 +131,9 @@ typeDeclarationStatement = line $ do
 variable :: Parser Expression
 variable = (do { name <- name; return $ Variable name }) -- scalar-variable-name or array-variable-name
 
+declarationStatement :: Parser FortranDeclaration
+declarationStatement = do try (typeDeclarationStatement)
+
 -- | R701 Primary
 primary :: Parser Expression
 primary = try (do { constant <- constant; return $ Constant constant})
@@ -139,29 +142,87 @@ primary = try (do { constant <- constant; return $ Constant constant})
 --       <|> arrayConstructor
 --       <|> structConstructor
 --       <|> functionReference
---       <|> (do {char '('; spaces; ret <- expr; spaces; char ')'; return ret})
+      <|> (do {char '('; spaces; ret <- expression; spaces; char ')'; return ret})
 
 -- R702 constant subobject
 
-declarationStatement :: Parser FortranDeclaration
-declarationStatement = do try (typeDeclarationStatement)
-
--- TODO
+-- | R703
 level1Expr :: Parser Expression
-level1Expr = primary
+level1Expr = do
+  first <- optionMaybe(definedUnaryOp)
+  rest <- primary
+  case first of
+    Nothing -> return rest
+    Just (duop) -> return $ duop rest
 
--- TODO
+-- | R704 defined-unary-op
+definedUnaryOp :: Parser (Expression -> Expression)
+definedUnaryOp = do
+  char '.'
+  opname <- many1 letter
+  char '.'
+  spaces
+  return $ UnaryOperand $ DefinedUnaryOp opname
+
+-- | R705 mult-operand
+multOperand :: Parser Expression
+multOperand = level1Expr `chainl1` powOp
+
+-- | R706 add-operand
+addOperand :: Parser Expression
+addOperand = multOperand `chainl1` multOp
+
+-- | R707 level-2-expr
 level2Expr :: Parser Expression
-level2Expr = level1Expr
+level2Expr = do
+  unaryOp <- optionMaybe (unaryAddOp)
+  rest <- addOperand `chainl1` addOp
+  case unaryOp of
+    Nothing -> return rest
+    Just (uop) -> return $ replaceFirstPrimary uop rest
+  where replaceFirstPrimary unaryOp expr = case expr of
+          BinaryOperand binop expr1 expr2 -> BinaryOperand binop (replaceFirstPrimary unaryOp expr1) expr2
+          _ -> unaryOp expr
+  -- TODO fix, this code does not work well (ex) "-(a+a)" seems  "(-a)+a"
 
--- TODO
+
+unaryAddOp :: Parser (Expression -> Expression)
+unaryAddOp = (try $ do { string "+";  spaces; return $ UnaryOperand UnaryAdd})
+         <|> (try $ do { string "-";  spaces; return $ UnaryOperand UnarySub})
+
+-- | R708
+powOp :: Parser (Expression -> Expression -> Expression)
+powOp = try $ do { spaces; string "**"; spaces; return $ BinaryOperand Pow}
+
+-- | R709
+multOp :: Parser (Expression -> Expression -> Expression)
+multOp = (try $ do { spaces; string "*";  spaces; return $ BinaryOperand Mul})
+     <|> (try $ do { spaces; string "/";  spaces; return $ BinaryOperand Div})
+
+-- | R710
+addOp :: Parser (Expression -> Expression -> Expression)
+addOp = (try $ do { spaces; string "+";  spaces; return $ BinaryOperand Add})
+    <|> (try $ do { spaces; string "-";  spaces; return $ BinaryOperand Sub})
+
+
+-- | R711 level-3-expr
 level3Expr :: Parser Expression
-level3Expr = level2Expr
+level3Expr = level2Expr `chainl1` concatOp
 
--- TODO
+-- | R712
+concatOp :: Parser (Expression -> Expression -> Expression)
+concatOp = try $ do { spaces; string "//"; spaces; return $ BinaryOperand Concat}
+
+-- | R713 level-4-expr
 level4Expr :: Parser Expression
-level4Expr = level3Expr `chainl1` relOp -- TODO fix -> "[level3Expr relOp] level3Expr" is correct
+level4Expr = do
+  first <- level3Expr
+  rest <- optionMaybe( do { rel <- relOp; arg2 <- level3Expr;return $ (\x -> rel x arg2) })
+  case rest of
+    Just ( op ) -> return $ op first
+    Nothing -> return $ first
 
+-- | R714 rel-op
 relOp :: Parser (Expression -> Expression -> Expression)
 relOp = do
   spaces
@@ -217,8 +278,18 @@ equivOp = (try $ do { spaces; string ".neqv.";  spaces; return $ BinaryOperand N
 
 -- | R723 expr
 expression :: Parser Expression
-expression = level5Expr
-         -- <|> (do {a <- expression; spaces; def <- definedBinaryOperation; spaces; b <- level5Expr; ?} -- TODO
+expression = level5Expr `chainl1` definedBinaryOp
+
+-- | R704 defined-binary-op
+definedBinaryOp :: Parser (Expression -> Expression -> Expression)
+definedBinaryOp = do
+  spaces
+  char '.'
+  opname <- many1 letter
+  char '.'
+  spaces
+  return $ BinaryOperand $ DefinedBinaryOp opname
+
 
 -- | R735 assignment-stmt
 assignmentStatement :: Parser FortranExecute

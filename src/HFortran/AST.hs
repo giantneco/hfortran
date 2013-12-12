@@ -26,6 +26,9 @@ data FortranBaseType =
 
 data UnaryOp =
     Not
+  | UnaryAdd
+  | UnarySub
+  | DefinedUnaryOp String
   deriving (Show, Eq)
 
 data BinaryOp =
@@ -33,13 +36,19 @@ data BinaryOp =
   | Or
   | Equiv
   | NEquiv
-  | DefinedBin String
+  | DefinedBinaryOp String
   | Equal
   | NEqual
   | LessT
   | LessE
   | GreT    
   | GreE
+  | Concat
+  | Add
+  | Sub
+  | Mul
+  | Div
+  | Pow
   deriving (Show, Eq)
 
 data Expression =

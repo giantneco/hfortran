@@ -8,6 +8,8 @@ import Text.Parsec.String
 -- TODO
 -- data Kind = ?
 
+-- data Symbol =
+
 data FortranConstant =
     CharLiteralConstant String
   | IntLiteralConstant Int (Maybe(FortranConstant))
@@ -58,8 +60,10 @@ data Expression =
   | BinaryOperand BinaryOp Expression Expression
   deriving (Show, Eq)
 
+-- data ImplicitSpec =
+
 data FortranDeclaration =
-  TypeDeclaration FortranBaseType [String]
+  TypeDeclaration FortranBaseType (Maybe([String])) [String]
   deriving (Show, Eq)
 
 data FortranFormat =

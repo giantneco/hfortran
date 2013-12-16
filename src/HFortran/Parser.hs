@@ -12,8 +12,6 @@ fortranCode = undefined
 fortranTopLevel :: Parser FortranTopLevel
 fortranTopLevel = undefined
 
--- program :: Parser FortranTopLevel
-
 space :: Parser ()
 space = do
   oneOf " \t"
@@ -34,6 +32,10 @@ identifier = do
   first <- letter
   rest <- many (letter <|> digit)
   return (first : rest)
+
+-- | R207 declarationConstruct
+declarationStatement :: Parser FortranDeclaration
+declarationStatement = do try (typeDeclarationStatement)
 
 -- | R304 name
 -- TODO length check
@@ -124,15 +126,26 @@ typeDeclarationStatement :: Parser FortranDeclaration
 typeDeclarationStatement = line $ do
   baseType <- typeSpec
   spaces
+  attrs <- optionMaybe $ do{ 
+    spaces;
+    attrs <- many $ do {
+      char ',';
+      spaces;
+      attr <- identifier;
+      return attr};
+    spaces ;
+    string "::";
+    return attrs}
+  spaces
   ids <- sepBy identifier commaSep
-  return $ TypeDeclaration baseType ids
+  return $ TypeDeclaration baseType attrs ids
+
+-- -- | R541
+-- implictStatement :: Parser 
 
 -- R601 variable
 variable :: Parser Expression
 variable = (do { name <- name; return $ Variable name }) -- scalar-variable-name or array-variable-name
-
-declarationStatement :: Parser FortranDeclaration
-declarationStatement = do try (typeDeclarationStatement)
 
 -- | R701 Primary
 primary :: Parser Expression
@@ -358,6 +371,7 @@ endProgramStatement programName = line $ do
   notFollowedBy alphaNum <|> do {string programName; return ()} <?> "require end program " ++ programName
   return ()
 
+-- | R1101 main-program
 program :: Parser FortranTopLevel
 program = do
   programName <- programStatement

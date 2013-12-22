@@ -1,5 +1,4 @@
 module HFortran.AST where
-
 import Text.Parsec
 import Text.Parsec.String
 
@@ -62,8 +61,36 @@ data Expression =
 
 -- data ImplicitSpec =
 
+data TypeAttr = 
+  Parameter
+  | Allocatable
+  | Dimension -- TODO array-spec
+  | External
+  | Intent IntentSpec
+  | Intrinsic
+  | Optional
+  | Pointer
+  | Save
+  | Target
+  deriving (Show, Eq)
+
+data ArraySpec =
+  ExplicitArraySpec (Maybe(Expression)) Expression
+  | AssumedArraySpec (Maybe(Expression))
+  | DeferredArraySpec
+  deriving (Show, Eq)
+
+data IntentSpec = In | Out | InOut deriving (Show, Eq)
+
+data AccessAttr =
+  Public
+  | Private
+  deriving (Show, Eq)
+
+data Attr = Type TypeAttr | Access AccessAttr deriving (Show, Eq)
+
 data FortranDeclaration =
-  TypeDeclaration FortranBaseType (Maybe([String])) [String]
+  TypeDeclaration FortranBaseType (Maybe([Attr])) [String]
   deriving (Show, Eq)
 
 data FortranFormat =

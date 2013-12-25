@@ -162,25 +162,26 @@ intentSpec = (try $ do { string "in"; return In })
        <|> (do { string "inout"; return InOut })
 
 
+-- TODO, check AssumedSizeSpec can be appear at the last of list
 -- | R513 array-spec
 arraySpec :: Parser [ArraySpec]
-arraySpec = try $ do {
-            <|> try (explicitShapeSpec `sepBy` commaSep)
+arraySpec = try (explicitShapeSpec `sepBy` commaSep)
             <|> try (assumedShapeSpec `sepBy` commaSep)
-            <|> try (deferredShapeSpec `sepBy` commaSep) -- not work previous assumedShapeSpec list will eat! 
 
 -- | R514 explicit-shape-spec
 -- R515 lowerBound
 -- R516 upperBound
+-- R519 assumed-size-spec
 explicitShapeSpec :: Parser ArraySpec
 explicitShapeSpec = do
-  lower <- optionMaybe $ try (do
+  lower <- optionMaybe $ try $ do
     expr <- expression
     spaces
     char ':'
-    return expr)
-  upper <- expression
-  return $ ExplicitArraySpec lower upper
+    return expr
+  upper <- (do { expr <- expression; return $ \lower -> ExplicitArraySpec lower expr} )
+       <|> (do { char '*'; return AssumedSize } )
+  return $ upper lower
 
 -- | R517 assumed-shape-spec
 assumedShapeSpec :: Parser ArraySpec
@@ -198,16 +199,18 @@ deferredShapeSpec = do
   char ':'
   return $ DeferredArraySpec
 
--- R519 assumed-size-spec
-assumedSizeSpec :: Parser [ArraySpec]
-assumedSizeSpec = try $ do
-  first <- explicitShapeSpec `sepBy` commaSep
-  spaces
-  char ','
-  spaces
-  lower <- try $ optionMaybe ( do { expr <- expression; spaces; char ':'; return expr } )
-  char '*'
-
+-- not work well
+-- -- | R519 assumed-size-spec
+-- assumedSizeSpec :: Parser [ArraySpec]
+-- assumedSizeSpec = try $ do
+--   first <- try $ explicitShapeSpec `sepBy` commaSep
+--   spaces
+--   char ','
+--   spaces
+--   -- lowerBound <- optionMaybe ( do { expr <- expression; spaces; char ':'; return expr } )
+--   char '*'
+--   return $ first ++ []
+--   -- return $ first ++ [AssumedSize lowerBound]
 
 -- -- | R541
 -- implictStatement :: Parser 

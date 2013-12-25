@@ -77,6 +77,7 @@ data TypeAttr =
 data ArraySpec =
   ExplicitArraySpec (Maybe(Expression)) Expression
   | AssumedArraySpec (Maybe(Expression))
+  | AssumedSize (Maybe(Expression))
   | DeferredArraySpec
   deriving (Show, Eq)
 

@@ -146,7 +146,7 @@ attrSpec = (try $ do { string "parameter"; return $ Type Parameter })
        <|> (try $ do { string "public"; return $ Access Public })
        <|> (try $ do { string "private"; return $ Access Private })
        <|> (do { string "allocatable"; return $ Type Allocatable })
-       <|> (do { string "dimension"; return $ Type Dimension }) -- TODO fix
+       <|> (do { string "dimension"; spaces; char '(' ; spaces; dim <- arraySpec ; spaces; char ')'; return $ Type (Dimension dim) }) -- TODO fix
        <|> (do { string "external"; return $ Type External})
        <|> (try $ do { string "intent"; spaces ; char '(' ; spaces ; spec <- intentSpec; spaces; char ')'; return $ Type (Intent spec) })
        <|> (do { string "intrinsic"; return $ Type Intrinsic})

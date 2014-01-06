@@ -64,7 +64,7 @@ data Expression =
 data TypeAttr = 
   Parameter
   | Allocatable
-  | Dimension -- TODO array-spec
+  | Dimension [ArraySpec]
   | External
   | Intent IntentSpec
   | Intrinsic

@@ -221,13 +221,14 @@ variable = (do { name <- name; return $ Variable name }) -- scalar-variable-name
 
 -- | R701 Primary
 primary :: Parser Expression
-primary = try (do { constant <- constant; return $ Constant constant})
+primary = 
+      (try functionReference)
 --       <|> constantSubobject
-      <|> variable
+      <|> (try variable)
 --       <|> arrayConstructor
 --       <|> structConstructor
---       <|> functionReference
       <|> (do {char '('; spaces; ret <- expression; spaces; char ')'; return ret})
+      <|> (try $ do { constant <- constant; return $ Constant constant})
 
 -- R702 constant subobject
 
@@ -452,3 +453,13 @@ program = do
   exes <- many executeStatement
   endProgramStatement programName
   return $ Program programName decls exes
+
+-- | R1210 function-reference
+functionReference :: Parser Expression
+functionReference = do
+  functionName <- identifier
+  spaces
+  char '('
+  arguments <- sepBy identifier commaSep
+  char ')'
+  return $ FunctionReference functionName []

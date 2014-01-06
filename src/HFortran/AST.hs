@@ -55,6 +55,7 @@ data BinaryOp =
 data Expression =
     Constant FortranConstant
   | Variable String
+  | FunctionReference String [Expression]
   | UnaryOperand UnaryOp Expression
   | BinaryOperand BinaryOp Expression Expression
   deriving (Show, Eq)

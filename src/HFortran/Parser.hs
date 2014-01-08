@@ -457,6 +457,10 @@ functionReference = do
   functionName <- identifier
   spaces
   _ <- char '('
-  arguments <- sepBy identifier commaSep
+  arguments <- sepBy expression commaSep
   _ <- char ')'
-  return $ FunctionReference functionName []
+  return $ FunctionReference functionName arguments
+
+-- TODO R1212 actual-arg-spec
+-- R1213
+-- R1214 

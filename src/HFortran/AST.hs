@@ -1,6 +1,4 @@
 module HFortran.AST where
-import Text.Parsec
-import Text.Parsec.String
 
 -- typedef Identifier = String
 

@@ -3,6 +3,7 @@ import HFortran.AST
 
 import Text.Parsec hiding (space, spaces)
 import Text.Parsec.String
+import Control.Applicative hiding ((<|>), many)
 
 fortranCode :: Parser [FortranTopLevel]
 fortranCode = undefined
@@ -14,8 +15,7 @@ space :: Parser ()
 space = oneOf " \t" >> return ()
 
 spaces :: Parser ()
-spaces = do
-  skipMany space
+spaces = skipMany space
 
 spaces1 :: Parser ()
 spaces1 = skipMany1 space
@@ -23,11 +23,11 @@ spaces1 = skipMany1 space
 eol :: Parser ()
 eol = do {_ <- char '\n'; return ()} <|> eof
 
+braced :: Parser a -> Parser a
+braced = between (do { _ <- char '(';  spaces}) (do {spaces; _ <- char ')'; return ()})
+
 identifier :: Parser String
-identifier = do
-  first <- letter
-  rest <- many (letter <|> digit)
-  return (first : rest)
+identifier = (:) <$> letter <*> (many $ letter <|> digit)
 
 -- | R207 declarationConstruct
 declarationStatement :: Parser FortranDeclaration
@@ -36,12 +36,9 @@ declarationStatement = do try (typeDeclarationStatement)
 -- | R304 name
 -- TODO length check
 name :: Parser String
-name = do
-  first <- letter
-  rest <- many $ letter <|> digit <|> (char '_')
-  -- if length (first : rest) > 31 then  ?
-  return $ first : rest
+name = (:) <$> letter <*> (many $ letter <|> digit <|> (char '_'))
 
+-- | parse a fortran line
 line :: Parser a -> Parser a
 line psr = do
   spaces
@@ -75,7 +72,7 @@ signedIntLiteralConstant :: Parser FortranConstant
 signedIntLiteralConstant = do
   signOption <- optionMaybe sign
   digitBody <- digitString
-  kind <- optionMaybe $ do { _ <- char '_'; kindParam }
+  kind <- optionMaybe $ char '_' >> kindParam 
   let value = read digitBody :: Int
     in
     case signOption of
@@ -86,7 +83,7 @@ signedIntLiteralConstant = do
 intLiteralConstant :: Parser FortranConstant
 intLiteralConstant = do
   digit <- digitString
-  kind <- optionMaybe $ do { _ <- char '_'; kindParam }
+  kind <- optionMaybe $ char '_' >> kindParam 
   return $ IntLiteralConstant (read digit) kind
 
 -- | R405 kind-param
@@ -129,34 +126,34 @@ typeDeclarationStatement = line $ do
 
 -- | R502 type-spec
 typeSpec :: Parser FortranBaseType
-typeSpec = (do { _ <- string "integer"; return FInteger })
-       <|> (do { _ <- string "real"; return FReal })
-       <|> (do { _ <- string "double"; spaces; _ <- string "precision"; return FDoublePrecision})
-       <|> (do { _ <- string "complex"; return FComplex })
-       <|> (do { _ <- string "character"; return FCharacter})
-       <|> (do { _ <- string "logical"; return FLogical })
-       <|> (do { _ <- string "type"; spaces ; _ <- char '(' ; spaces ; _ <- identifier; spaces; _ <- char ')'; return FType })
+typeSpec = (string "integer" >> return FInteger)
+       <|> (string "real" >> return FReal)
+       <|> (string "double" >> spaces >> string "precision" >> return FDoublePrecision)
+       <|> (string "complex" >> return FComplex )
+       <|> (string "character" >> return FCharacter)
+       <|> (string "logical" >> return FLogical )
+       <|> (string "type" >> spaces >> braced identifier >> return FType)
 
 -- | R503 + R511
 attrSpec :: Parser Attr
-attrSpec = (try $ do { _ <- string "parameter"; return $ Type Parameter })
-       <|> (try $ do { _ <- string "public"; return $ Access Public })
-       <|> (try $ do { _ <- string "private"; return $ Access Private })
-       <|> (do { _ <- string "allocatable"; return $ Type Allocatable })
-       <|> (do { _ <- string "dimension"; spaces; _ <- char '(' ; spaces; dim <- arraySpec ; spaces; _ <- char ')'; return $ Type (Dimension dim) }) -- TODO fix
-       <|> (do { _ <- string "external"; return $ Type External})
-       <|> (try $ do { _ <- string "intent"; spaces ; _ <- char '(' ; spaces ; spec <- intentSpec; spaces; _ <- char ')'; return $ Type (Intent spec) })
-       <|> (do { _ <- string "intrinsic"; return $ Type Intrinsic})
-       <|> (do { _ <- string "optional"; return $ Type Optional })
-       <|> (do { _ <- string "pointer"; return $ Type Pointer })
-       <|> (do { _ <- string "save"; return $ Type Save })
-       <|> (do { _ <- string "target"; return $ Type Target })
+attrSpec = (try $ string "parameter" >> return (Type Parameter))
+       <|> (try $ string "public" >> return (Access Public))
+       <|> (try $ string "private" >> return (Access Private))
+       <|> (string "allocatable" >> return (Type Allocatable))
+       <|> (string "dimension" >> spaces >> braced arraySpec >>= \dim -> return $ Type $ Dimension dim) -- TODO fix
+       <|> (string "external" >> return (Type External))
+       <|> (try $ string "intent" >> spaces >> braced intentSpec >>= \spec -> return $ Type $ Intent spec)
+       <|> (string "intrinsic" >> return (Type Intrinsic))
+       <|> (string "optional" >> return (Type Optional))
+       <|> (string "pointer" >> return (Type Pointer))
+       <|> (string "save" >> return (Type Save))
+       <|> (string "target" >> return (Type Target))
 
 -- | R502 intent-spec
 intentSpec :: Parser IntentSpec
-intentSpec = (try $ do { _ <- string "in"; return In })
-       <|> (do { _ <- string "out"; return Out })
-       <|> (do { _ <- string "inout"; return InOut })
+intentSpec = (try $ string "in" >> return In)
+       <|> (string "out" >> return Out)
+       <|> (string "inout" >> return InOut)
 
 
 -- TODO, check AssumedSizeSpec can be appear at the last of list
@@ -192,9 +189,7 @@ assumedShapeSpec = do
 
 -- | R518 deferred-shape-spec
 deferredShapeSpec :: Parser ArraySpec
-deferredShapeSpec = do
-  _ <- char ':'
-  return $ DeferredArraySpec
+deferredShapeSpec = char ':' >> return DeferredArraySpec
 
 -- not work well
 -- -- | R519 assumed-size-spec
@@ -214,7 +209,7 @@ deferredShapeSpec = do
 
 -- R601 variable
 variable :: Parser Expression
-variable = (do { name <- name; return $ Variable name }) -- scalar-variable-name or array-variable-name
+variable = name >>= \name -> return $ Variable name -- scalar-variable-name or array-variable-name
 
 -- | R701 Primary
 primary :: Parser Expression
@@ -224,8 +219,8 @@ primary =
       <|> (try variable)
 --       <|> arrayConstructor
 --       <|> structConstructor
-      <|> (do {_ <- char '('; spaces; ret <- expression; spaces; _ <- char ')'; return ret})
-      <|> (try $ do { constant <- constant; return $ Constant constant})
+      <|> (braced expression)
+      <|> (try $ constant >>= \value -> return $ Constant value)
 
 -- R702 constant subobject
 
@@ -271,22 +266,22 @@ level2Expr = do
 
 
 unaryAddOp :: Parser (Expression -> Expression)
-unaryAddOp = (try $ do { _ <- string "+";  spaces; return $ UnaryOperand UnaryAdd})
-         <|> (try $ do { _ <- string "-";  spaces; return $ UnaryOperand UnarySub})
+unaryAddOp = (try $ char '+' >> spaces >> return (UnaryOperand UnaryAdd))
+         <|> (try $ char '-' >> spaces >> return (UnaryOperand UnarySub))
 
 -- | R708
 powOp :: Parser (Expression -> Expression -> Expression)
-powOp = try $ do { try spaces; _ <- string "**"; spaces; return $ BinaryOperand Pow}
+powOp = try $ spaces >> string "**" >> spaces >> return (BinaryOperand Pow)
 
 -- | R709
 multOp :: Parser (Expression -> Expression -> Expression)
-multOp = (try $ do { try spaces; _ <- string "*";  spaces; return $ BinaryOperand Mul})
-     <|> (try $ do { try spaces; _ <- string "/";  spaces; return $ BinaryOperand Div})
+multOp = (try $ try spaces >> char '*' >>  spaces >> return (BinaryOperand Mul))
+     <|> (try $ try spaces >> char '/' >>  spaces >> return (BinaryOperand Div))
 
 -- | R710
 addOp :: Parser (Expression -> Expression -> Expression)
-addOp = (try $ do { try spaces; _ <- string "+";  spaces; return $ BinaryOperand Add})
-    <|> (try $ do { try spaces; _ <- string "-";  spaces; return $ BinaryOperand Sub})
+addOp = (try $ try spaces >> char '+' >> spaces >> return (BinaryOperand Add))
+    <|> (try $ try spaces >> char '-' >> spaces >> return (BinaryOperand Sub))
 
 
 -- | R711 level-3-expr
@@ -295,7 +290,7 @@ level3Expr = level2Expr `chainl1` concatOp
 
 -- | R712
 concatOp :: Parser (Expression -> Expression -> Expression)
-concatOp = try $ do { try spaces; _ <- string "//"; spaces; return $ BinaryOperand Concat}
+concatOp = try $ try spaces >> string "//" >> spaces >> return (BinaryOperand Concat)
 
 -- | R713 level-4-expr
 level4Expr :: Parser Expression
@@ -311,18 +306,18 @@ relOp :: Parser (Expression -> Expression -> Expression)
 relOp = try $ do
   spaces
   op <- choice [
-    do { _ <- string ".eq."; return $ BinaryOperand Equal },
-    do { _ <- string "=="; return $ BinaryOperand Equal },
-    do { _ <- string ".neq."; return $ BinaryOperand NEqual },
-    do { _ <- string "/="; return $ BinaryOperand NEqual },
-    do { _ <- string ".lt."; return $ BinaryOperand LessT },
-    do { _ <- string "<"; return $ BinaryOperand LessT },
-    do { _ <- string ".le."; return $ BinaryOperand LessE },
-    do { _ <- string "<="; return $ BinaryOperand LessE },
-    do { _ <- string ".gt."; return $ BinaryOperand GreT },
-    do { _ <- string ">"; return $ BinaryOperand GreT },
-    do { _ <- string ".ge."; return $ BinaryOperand GreE },
-    do { _ <- string ">="; return $ BinaryOperand GreE }
+    string ".eq." >> return ( BinaryOperand Equal ),
+    string "==" >> return ( BinaryOperand Equal ),
+    string ".neq." >> return ( BinaryOperand NEqual ),
+    string "/=" >> return ( BinaryOperand NEqual ),
+    string ".lt." >> return ( BinaryOperand LessT ),
+    string "<" >> return ( BinaryOperand LessT ),
+    string ".le." >> return ( BinaryOperand LessE ),
+    string "<=" >> return ( BinaryOperand LessE ),
+    string ".gt." >> return ( BinaryOperand GreT ),
+    string ">" >> return ( BinaryOperand GreT ),
+    string ".ge." >> return ( BinaryOperand GreE ),
+    string ">=" >> return ( BinaryOperand GreE )
                ]
   spaces
   return op
@@ -456,9 +451,7 @@ functionReference :: Parser Expression
 functionReference = do
   functionName <- identifier
   spaces
-  _ <- char '('
-  arguments <- sepBy expression commaSep
-  _ <- char ')'
+  arguments <- braced (sepBy expression commaSep)
   return $ FunctionReference functionName arguments
 
 -- TODO R1212 actual-arg-spec

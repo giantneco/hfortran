@@ -26,8 +26,8 @@ eol = do {_ <- char '\n'; return ()} <|> eof
 braced :: Parser a -> Parser a
 braced = between (do { _ <- char '(';  spaces}) (do {spaces; _ <- char ')'; return ()})
 
-identifier :: Parser String
-identifier = (:) <$> letter <*> (many $ letter <|> digit)
+identifier :: Parser Symbol
+identifier = (:) <$> letter <*> (many $ letter <|> digit) >>= return . Symbol
 
 -- | R207 declarationConstruct
 declarationStatement :: Parser FortranDeclaration
@@ -35,8 +35,8 @@ declarationStatement = do try (typeDeclarationStatement)
 
 -- | R304 name
 -- TODO length check
-name :: Parser String
-name = (:) <$> letter <*> (many $ letter <|> digit <|> (char '_'))
+name :: Parser Symbol
+name = (:) <$> letter <*> (many $ letter <|> digit <|> (char '_')) >>= return . Symbol
 
 -- | parse a fortran line
 line :: Parser a -> Parser a
@@ -55,17 +55,17 @@ commaSep = try $ do
            spaces
 
 -- | R401 signed-digit-string
-signedDigitString :: Parser String
+signedDigitString :: Parser Symbol
 signedDigitString = do
   signOption <- optionMaybe sign
   digits <- digitString
   case signOption of
     Nothing -> return digits
-    Just x -> return $ x : digits
+    Just x -> return $ Symbol ( x : symbolContent digits )
 
 -- | R402 digit-string
-digitString :: Parser String
-digitString = many1 digit
+digitString :: Parser Symbol
+digitString = many1 digit >>= return . Symbol
 
 -- | R403 signed-int-literal-constant
 signedIntLiteralConstant :: Parser FortranConstant
@@ -73,7 +73,7 @@ signedIntLiteralConstant = do
   signOption <- optionMaybe sign
   digitBody <- digitString
   kind <- optionMaybe $ char '_' >> kindParam 
-  let value = read digitBody :: Int
+  let value = readSymbol digitBody :: Int
     in
     case signOption of
       Nothing -> return $ IntLiteralConstant value kind
@@ -84,14 +84,14 @@ intLiteralConstant :: Parser FortranConstant
 intLiteralConstant = do
   digit <- digitString
   kind <- optionMaybe $ char '_' >> kindParam 
-  return $ IntLiteralConstant (read digit) kind
+  return $ IntLiteralConstant (readSymbol digit) kind
 
 -- | R405 kind-param
 -- TODO accept named constant
 kindParam :: Parser FortranConstant
 kindParam = do
   digit <- digitString
-  return $ IntLiteralConstant (read digit) Nothing
+  return $ IntLiteralConstant (readSymbol digit) Nothing
 
 -- | R406 sign
 sign :: Parser Char
@@ -140,9 +140,9 @@ attrSpec = (try $ string "parameter" >> return (Type Parameter))
        <|> (try $ string "public" >> return (Access Public))
        <|> (try $ string "private" >> return (Access Private))
        <|> (string "allocatable" >> return (Type Allocatable))
-       <|> (string "dimension" >> spaces >> braced arraySpec >>= \dim -> return $ Type $ Dimension dim) -- TODO fix
+       <|> (string "dimension" >> spaces >> braced arraySpec >>= return . Type . Dimension) -- TODO fix
        <|> (string "external" >> return (Type External))
-       <|> (try $ string "intent" >> spaces >> braced intentSpec >>= \spec -> return $ Type $ Intent spec)
+       <|> (try $ string "intent" >> spaces >> braced intentSpec >>= return . Type . Intent)
        <|> (string "intrinsic" >> return (Type Intrinsic))
        <|> (string "optional" >> return (Type Optional))
        <|> (string "pointer" >> return (Type Pointer))
@@ -209,7 +209,7 @@ deferredShapeSpec = char ':' >> return DeferredArraySpec
 
 -- R601 variable
 variable :: Parser Expression
-variable = name >>= \name -> return $ Variable name -- scalar-variable-name or array-variable-name
+variable = name >>= return . Variable -- scalar-variable-name or array-variable-name
 
 -- | R701 Primary
 primary :: Parser Expression
@@ -220,7 +220,7 @@ primary =
 --       <|> arrayConstructor
 --       <|> structConstructor
       <|> (braced expression)
-      <|> (try $ constant >>= \value -> return $ Constant value)
+      <|> (try $ constant >>= return . Constant)
 
 -- R702 constant subobject
 
@@ -241,7 +241,7 @@ definedUnaryOp = try $ do
   opname <- many1 letter
   _ <- char '.'
   spaces
-  return $ UnaryOperand $ DefinedUnaryOp opname
+  return $ UnaryOperand $ DefinedUnaryOp $ Symbol $ "." ++ opname ++ "."
 
 -- | R705 mult-operand
 multOperand :: Parser Expression
@@ -367,7 +367,7 @@ definedBinaryOp = try $ do
   opname <- many1 letter
   _ <- char '.'
   spaces
-  return $ BinaryOperand $ DefinedBinaryOp opname
+  return $ BinaryOperand $ DefinedBinaryOp $ Symbol opname
 
 
 -- | R735 assignment-stmt
@@ -421,7 +421,7 @@ executeStatement = try continueStatement
                <|> try assignmentStatement
                <|> try printStatement
 
-programStatement :: Parser String
+programStatement :: Parser Symbol
 programStatement = line $ do
   _ <- string "program"
   spaces
@@ -443,7 +443,7 @@ program = do
   programName <- programStatement
   decls <- many declarationStatement
   exes <- many executeStatement
-  endProgramStatement programName
+  endProgramStatement $ symbolContent programName
   return $ Program programName decls exes
 
 -- | R1210 function-reference
@@ -451,7 +451,7 @@ functionReference :: Parser Expression
 functionReference = do
   functionName <- identifier
   spaces
-  arguments <- braced (sepBy expression commaSep)
+  arguments <- braced $ sepBy expression commaSep
   return $ FunctionReference functionName arguments
 
 -- TODO R1212 actual-arg-spec

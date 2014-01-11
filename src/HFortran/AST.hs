@@ -5,7 +5,13 @@ module HFortran.AST where
 -- TODO
 -- data Kind = ?
 
--- data Symbol =
+data Symbol = Symbol String deriving (Show, Eq)
+
+symbolContent :: Symbol -> String
+symbolContent (Symbol string) = string
+
+readSymbol :: Read a => Symbol -> a
+readSymbol (Symbol string) = read string
 
 data FortranConstant =
     CharLiteralConstant String
@@ -27,7 +33,7 @@ data UnaryOp =
     Not
   | UnaryAdd
   | UnarySub
-  | DefinedUnaryOp String
+  | DefinedUnaryOp Symbol
   deriving (Show, Eq)
 
 data BinaryOp =
@@ -35,7 +41,7 @@ data BinaryOp =
   | Or
   | Equiv
   | NEquiv
-  | DefinedBinaryOp String
+  | DefinedBinaryOp Symbol
   | Equal
   | NEqual
   | LessT
@@ -52,8 +58,8 @@ data BinaryOp =
 
 data Expression =
     Constant FortranConstant
-  | Variable String
-  | FunctionReference String [Expression]
+  | Variable Symbol
+  | FunctionReference Symbol [Expression]
   | UnaryOperand UnaryOp Expression
   | BinaryOperand BinaryOp Expression Expression
   deriving (Show, Eq)
@@ -90,7 +96,7 @@ data AccessAttr =
 data Attr = Type TypeAttr | Access AccessAttr deriving (Show, Eq)
 
 data FortranDeclaration =
-  TypeDeclaration FortranBaseType (Maybe([Attr])) [String]
+  TypeDeclaration FortranBaseType (Maybe([Attr])) [Symbol]
   deriving (Show, Eq)
 
 data FortranFormat =
@@ -105,11 +111,11 @@ data FortranExecute =
   deriving (Show, Eq)
 
 -- data FortranStatement
---   = ProgramStatement String
---   | EndProgramStatement Maybe(String)
+--   = ProgramStatement Symbol
+--   | EndProgramStatement Maybe(Symbol)
 
 data FortranTopLevel
-  = Program String [FortranDeclaration] [FortranExecute]
+  = Program Symbol [FortranDeclaration] [FortranExecute]
   -- | Subroutine
   -- | Function
   -- | Module     -- TODO
